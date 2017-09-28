@@ -32,18 +32,22 @@ class Product():
                                        row["Fases Pasadas"].split(",")}))
         return products
 
-#Calcula dependencia
+
 def depCalc(root,prod):
+    '''Calcula dependencia'''
     costAcum = 0
     if len(dependencies[root]) != 0:
         costAcum += depCalc(max(dependencies[root]),prod)
         return costAcum
     else:
         return prod.cost[root]
-#Calcula paralelo
-#Calcula el costo de un resultado de combinancion usando el numero de pedidos retrasados y tiempo total
-#Que le toma realizar esa solucion
+
 def cost(result):
+    '''
+    Calcula paralelo
+    Calcula el costo de un resultado de combinancion usando el numero de pedidos retrasados y tiempo total
+    Que le toma realizar esa solucion
+    '''
     totalCost = 0
     for component in result:
         for product in result[component]:
