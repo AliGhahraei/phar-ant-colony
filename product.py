@@ -8,11 +8,12 @@ class Phase(Enum):
 
 
 class Product():
-    def __init__(self, cost, name, date, passed_phases=None):
+    def __init__(self, cost, name, date, id_, passed_phases=None):
         self.cost = cost
         self.name = name
         self.date = date
         self.passed_phases = passed_phases or set()
+        self.id_ = id_
 
     def days_left(self):
         return self.date - datetime.now()
@@ -21,9 +22,10 @@ class Product():
         products = []
         with open(path, newline='') as csvfile:
             reader = csv.DictReader(csvfile, delimiter=',')
-            for row in reader:
+            for idx, row in enumerate(reader):
                 products.append(
                     Product(
+                        id_=idx,
                         cost={key: int(value) for (key, value) in
                               zip(range(1, 14), row["Costo"].split(","))},
                         name=row['Producto'],
