@@ -1,4 +1,8 @@
 from datetime import datetime
+from enum import Enum
+
+class Phase(Enum):
+    TROQ = 1
 
 class Product():
     def __init__(self, cost, name, date):
