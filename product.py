@@ -52,10 +52,13 @@ def cost(result):
     return totalCost
 
 def main():
-    products = Product.import_csv("datos.csv")
-    print(cost({4:products}))
-    #products = None
-    #best = {'vector': random_permutation(products)}
+    products = Product.import_csv('datos.csv')
+    processes = []
+
+    for product in products:
+        for {process for process in range(1, 14)}
+
+    best = {'vector': random_permutation(products)}
 
 
 if __name__ == '__main__':
