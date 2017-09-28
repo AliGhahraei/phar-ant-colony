@@ -11,8 +11,14 @@ class Product():
         return datetime.now() - self.date
 
 
+def main():
+    products = None
+    best = {'vector': random_permutation(products)}
+
+
 if __name__ == '__main__':
     main()
 
 
-def main():
+def random_permutation(products):
+    pass
