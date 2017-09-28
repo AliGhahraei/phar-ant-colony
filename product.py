@@ -2,8 +2,10 @@ from datetime import datetime
 from enum import Enum
 import csv
 
+
 class Phase(Enum):
     TROQ = 1
+
 
 class Product():
     def __init__(self, cost, name, date, passed_phases=None):
@@ -20,10 +22,14 @@ class Product():
         with open(path, newline='') as csvfile:
             reader = csv.DictReader(csvfile, delimiter=',')
             for row in reader:
-                products.append(Product(cost = {key:int(value) for (key, value) in zip(range(1,14), row["Costo"].split(","))},
-                                        name = row['Producto'],
-                                        date = datetime.strptime(row['Fecha'], '%d/%m/%Y'),
-                                        passed_phases = {int(x) for x in row["Fases Pasadas"].split(",")}))
+                products.append(
+                    Product(
+                        cost={key: int(value) for (key, value) in
+                              zip(range(1, 14), row["Costo"].split(","))},
+                        name=row['Producto'],
+                        date=datetime.strptime(row['Fecha'], '%d/%m/%Y'),
+                        passed_phases={int(x) for x in
+                                       row["Fases Pasadas"].split(",")}))
         return products
 
 
