@@ -13,7 +13,7 @@ class Product():
         self.passed_phases = passed_phases or set()
 
     def days_left(self):
-        return datetime.now() - self.date
+        return self.date - datetime.now()
 
     def import_csv(path):
         products = []
