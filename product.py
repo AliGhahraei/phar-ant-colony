@@ -13,7 +13,7 @@ class Product():
         self.passed_phases = passed_phases or set()
 
     def days_left(self):
-        return self.date - datetime.now()
+        return self.date.hours - datetime.now().hours()
 
     def import_csv(path):
         products = []
@@ -30,21 +30,20 @@ class Product():
 def depCalc(root,prod):
     costAcum = 0
     if len(dependencies[root]) != 0:
-        for i in dependencies[root]:
-            costAcum = costAcum + depCalc(i,prod)
+        costAcum += depCalc(max(dependencies[root]),prod)
         return costAcum
     else:
         return prod.cost[root]
-
+#Calcula paralelo
 #Calcula el costo de un resultado de combinancion usando el numero de pedidos retrasados y tiempo total
 #Que le toma realizar esa solucion
 def cost(result):
     totalCost = 0
     for component in result:
         for product in result[component]:
-           totalCost = totalCost + depCalc(component, product)
+           totalCost = totalCost + product.cost[component]+depCalc(component, product)
+           print(product.days_left())
     return totalCost
-
 
 def main():
     products = Product.import_csv("datos.csv")
