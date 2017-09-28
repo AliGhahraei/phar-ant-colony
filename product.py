@@ -13,14 +13,14 @@ class Product():
         self.passed_phases = passed_phases or set()
 
     def days_left(self):
-        return datetime.now() - self.date
+        return self.date - datetime.now()
 
     def import_csv(path):
         products = []
         with open(path, newline='') as csvfile:
             reader = csv.DictReader(csvfile, delimiter=',')
             for row in reader:
-                products.append(Product(cost = {key:int(value) for (key, value) in zip(range(13), row["Costo"].split(","))},
+                products.append(Product(cost = {key:int(value) for (key, value) in zip(range(1,14), row["Costo"].split(","))},
                                         name = row['Producto'],
                                         date = datetime.strptime(row['Fecha'], '%d/%m/%Y'),
                                         passed_phases = {int(x) for x in row["Fases Pasadas"].split(",")}))
