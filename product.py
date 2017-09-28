@@ -1,19 +1,30 @@
 from datetime import datetime
 from enum import Enum
+import csv
 
 dependencies = {1:set(),2:set(),3:set(),4:{1,2,3},5:{4},6:{4},7:{5,6},8:[],9:[8],10:[9],11:[],12:[],13:[11,12],14[13,10,7]}
 
 
 class Product():
-    def __init__(self, cost, name, date):
+    def __init__(self, cost, name, date, passed_phases=None):
         self.cost = cost
         self.name = name
         self.date = date
-        self.passed_phases = set()
+        self.passed_phases = passed_phases or set()
 
     def days_left(self):
         return datetime.now() - self.date
 
+    def import_csv(path):
+        products = []
+        with open(path, newline='') as csvfile:
+            reader = csv.DictReader(csvfile, delimiter=',')
+            for row in reader:
+                products.append(Product(cost = {key:value for (key, value) in zip(range(13), row["Costo"].split(","))},
+                                        name = row['Producto'],
+                                        date = datetime.strptime(row['Fecha'], '%d/%m/%Y'),
+                                        passed_phases = {int(x) for x in row["Fases Pasadas"].split(",")}))
+        return products
 #Calcula dependencia
 def depCalc(root,prod):
     costAcum = 0
