@@ -71,11 +71,10 @@ def depCalc(root,prod):
     else:
         return prod.cost[root]
 
-def cost(result):
+def cost(result, products):
     phase_start_times = {phase: 0 for phase in range(1, FINAL_PHASE)}
 
     for phase_idx in range(1, FINAL_PHASE):
-        max_phase_time = 0
         max_dep_value = 0
 
         try:
@@ -87,7 +86,7 @@ def cost(result):
                 for product in result[dependency]:
                     phase_time += product.cost[dependency]
                     if product is first_product:
-                        if phase_start_times[dependency] + phase_time > max_dep_value:
+                        if phase_start_times[dependency] + phase_time >= max_dep_value:
                             max_dep_value = phase_start_times[dependency] + phase_time
                         break
 
@@ -95,7 +94,34 @@ def cost(result):
             pass
 
         phase_start_times[phase_idx] = max_dep_value
-    return max([phase_start_times[dep] for dep in dependencies[FINAL_PHASE]])
+
+
+    total_delay = 0
+
+    for product in products:
+        max_dependency_duration = 0
+
+        for dependency in dependencies[FINAL_PHASE] - product.original_phases:
+            phase_time = 0
+
+            for phase_product in result[dependency]:
+                phase_time += phase_product.cost[dependency]
+                if phase_product is product:
+                    if (phase_start_times[dependency] + phase_time
+                        >= max_dependency_duration):
+                        max_dependency_duration = (phase_start_times[dependency]
+                                                   + phase_time)
+                    break
+
+        expected_delivery = datetime.now() + timedelta(hours=max_dependency_duration)
+        product_delay = expected_delivery - product.date
+
+        if product_delay > timedelta(hours=0):
+            total_delay += product_delay.total_seconds()
+
+    return total_delay
+
+    #return max([phase_start_times[dep] for dep in dependencies[FINAL_PHASE]])
 
 
     #return component_duration
@@ -179,39 +205,6 @@ def update_pheromone(pheromone, solutions):
             current_idx, current_phase, current_cost = idx, phase, cost
 
 
-def main():
-    global solution_path
-    num_ants = 50
-    max_it = 20
-    c_heur = 2.5 # heuristic coefficient
-    c_hist = 1.0 # pheromone coefficient
-    decay_factor = 0.6 # reduction of pheromone
-    processes = []
-    products = Product.import_csv("datos.csv")
-    best = {'vector': random_permutation(products)}
-    best['cost'] = cost(best['vector'])
-    pheromone = initialise_pheromone_matrix(len(products), best['cost'])
-    for i in range(max_it):
-        solutions = []
-        for ant in range(num_ants):
-            candidate = {}
-            products = Product.import_csv("datos.csv")
-            candidate['vector'] = stepwise_const(products, pheromone, c_heur, c_hist)
-            candidate['cost'] = cost(candidate['vector'])
-            if candidate['cost'] < best['cost']:
-                best = candidate
-            solutions.append(solution_path)
-            solution_path = []
-        decay_pheromone(pheromone, decay_factor)
-        update_pheromone(pheromone, solutions)
-        print(" > iteration=%d, best=%g" % (i+1,best['cost']))
-    return best
-
-
-if __name__ == '__main__':
-    main()
-
-
 def get_all_initials(products):
     initials = set()
 
@@ -220,6 +213,19 @@ def get_all_initials(products):
             initials.add(f'{product.id_}-{initial}')
 
     return initials
+
+
+def get_initials(passed_phases, current_initials={FINAL_PHASE}):
+    new_initials = set()
+    final_initials = set()
+    for process in current_initials:
+        if not dependencies[process] - passed_phases:
+            return {process}
+        for dependency in dependencies[process] - passed_phases:
+            new_initials = {dependency}
+            dep = get_initials(passed_phases, new_initials)
+            final_initials = final_initials.union(dep)
+        return final_initials
 
 
 def random_permutation(products):
@@ -244,14 +250,34 @@ def random_permutation(products):
     return solution
 
 
-def get_initials(passed_phases, current_initials={FINAL_PHASE}):
-    new_initials = set()
-    final_initials = set()
-    for process in current_initials:
-        if not dependencies[process] - passed_phases:
-            return {process}
-        for dependency in dependencies[process] - passed_phases:
-            new_initials = {dependency}
-            dep = get_initials(passed_phases, new_initials)
-            final_initials = final_initials.union(dep)
-        return final_initials
+def main():
+    global solution_path
+    num_ants = 50
+    max_it = 20
+    c_heur = 2.5 # heuristic coefficient
+    c_hist = 1.0 # pheromone coefficient
+    decay_factor = 0.6 # reduction of pheromone
+    processes = []
+    products = Product.import_csv("datos.csv")
+    best = {'vector': random_permutation(products)}
+    best['cost'] = cost(best['vector'], products)
+    pheromone = initialise_pheromone_matrix(len(products), best['cost'])
+    for i in range(max_it):
+        solutions = []
+        for ant in range(num_ants):
+            candidate = {}
+            products = Product.import_csv("datos.csv")
+            candidate['vector'] = stepwise_const(products, pheromone, c_heur, c_hist)
+            candidate['cost'] = cost(candidate['vector'], products)
+            if candidate['cost'] < best['cost']:
+                best = candidate
+            solutions.append(solution_path)
+            solution_path = []
+        decay_pheromone(pheromone, decay_factor)
+        update_pheromone(pheromone, solutions)
+        print(" > iteration=%d, best=%g" % (i+1,best['cost']))
+    return best
+
+
+if __name__ == '__main__':
+    main()
