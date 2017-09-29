@@ -2,11 +2,13 @@ from datetime import datetime
 from enum import Enum
 from random import sample
 from datetime import timedelta
+import numpy as np
 
 import csv
 
 dependencies = {1:set(),2:set(),3:set(),4:{1,2,3},5:{4},6:{4},7:{5,6},8:set(),9:{8},10:{9},11:set(),12:set(),13:{11,12},14:{13,10,7}}
 FINAL_PHASE = 14
+solution_path = []
 
 
 class Product():
@@ -70,38 +72,140 @@ def depCalc(root,prod):
         return prod.cost[root]
 
 def cost(result):
-    '''
-    Calcula paralelo
-    Calcula el costo de un resultado de combinancion usando el numero de pedidos retrasados y tiempo total
-    Que le toma realizar esa solucion
-    '''
-    totalCost = 0
-    delayed = 1
-    for component in result:
-        for product in result[component]:
-            print(f'id: {product.id_}')
-            print(f'component: {component}')
-            print(f'{product.original_phases}')
-            if product.hours_left() - (product.cost[component] + depCalc(component, product)) < 0:
-                delayed += 1
-            totalCost = totalCost + product.cost[component] + depCalc(component, product)
-            print((product.cost[component] + depCalc(component, product)))
-            print(product.hours_left() - (product.cost[component] + depCalc(component, product)))
+    phase_start_times = {phase: 0 for phase in range(1, FINAL_PHASE)}
 
-            finalCost = depCalc(14, product)
-            print(f'final_cost: {finalCost}')
+    for phase_idx in range(1, FINAL_PHASE):
+        max_phase_time = 0
+        max_dep_value = 0
+
+        try:
+            first_product = result[phase_idx][0]
+
+            for dependency in dependencies[phase_idx] - first_product.original_phases:
+                phase_time = 0
+
+                for product in result[dependency]:
+                    phase_time += product.cost[dependency]
+                    if product is first_product:
+                        if phase_start_times[dependency] + phase_time > max_dep_value:
+                            max_dep_value = phase_start_times[dependency] + phase_time
+                        break
+
+        except IndexError:
+            pass
+
+        phase_start_times[phase_idx] = max_dep_value
+    return max([phase_start_times[dep] for dep in dependencies[FINAL_PHASE]])
 
 
-    # if(totalCost -
-    print(f'Retrasos {delayed}')
-    return delayed * totalCost
+    #return component_duration
+
+def initialise_pheromone_matrix(num_products, naive_score):
+    """initialises the pheromone matrix"""
+    v = (num_products*(FINAL_PHASE-1)) / naive_score
+    return v * np.ones((num_products*(FINAL_PHASE-1))*(num_products*(FINAL_PHASE-1))).reshape((num_products*(FINAL_PHASE-1),(num_products*(FINAL_PHASE-1))))
+
+def calculate_choices(processes, products, current_node, pheromone, c_heur, c_hist):
+    """calculate the selection probability for a group of processes"""
+    choices = []
+    for i,coord in enumerate(processes):
+        product_idx, phase = coord.split('-')
+        product_idx, phase = int(product_idx), int(phase)
+        prob = {'process' : (product_idx, phase)}
+        costs = {product.id_: product.cost for product in products}
+        if phase != 14:
+            prob['history'] = pheromone[current_node[0]*13 + current_node[1] - 1, product_idx*13 + phase - 1] ** c_hist
+            prob['distance'] = costs[product_idx][phase]
+        else:
+            prob['distance'] = 1
+            prob['history'] = 0
+        prob['heuristic'] = (1.0 / prob['distance']) ** c_heur
+        prob['prob'] = prob['history'] * prob['heuristic']
+        choices.append(prob)
+    return choices
+
+
+def select_next_process(choices):
+    """selects the next process for a partial tour"""
+    psum = 0.0
+    for element in choices: psum += element['prob']
+    if psum == 0.0:
+        return choices[np.random.randint(len(choices))]['process']
+    v = np.random.random()
+    for i,choice in enumerate(choices):
+        v -= choice['prob'] / psum
+        if v <= 0.0: return choice['process']
+    return choices[-1]['process']
+
+
+def stepwise_const(products, phero, c_heur, c_hist):
+    """construct a tour for an ant"""
+    current_initials = get_all_initials(products)
+
+    solution = {phase: [] for phase in range(1, FINAL_PHASE)}
+    final_initials = {f'{product.id_}-{FINAL_PHASE}' for product in products}
+    product_idx, phase = sample(current_initials, 1)[0].split('-')
+    product_idx, phase = int(product_idx), int(phase)
+    perm = {phase: [] for phase in range(1, FINAL_PHASE)}
+    while current_initials != final_initials:
+        possible_processes = get_all_initials(products)
+        choices = calculate_choices(possible_processes, products, (product_idx, phase), phero, c_heur, c_hist)
+        next_process = select_next_process(choices)
+        for product in products:
+            if product.id_ == next_process[0]:
+                perm[next_process[1]].append(product)
+                solution_path.append((product.id_, next_process[1], product.cost[next_process[1]]))
+                product.passed_phases.add(next_process[1])
+        current_initials = get_all_initials(products)
+    return perm
+
+
+def decay_pheromone(pheromone, decay_factor):
+    """reduce all the pheromone values"""
+    factor = 1.0 - decay_factor
+    for i in range(len(pheromone)):
+        for j in range(len(pheromone[0])):
+            pheromone[i, j] *= factor
+    
+def update_pheromone(pheromone, solutions):
+    """increase the pheromone values in the ants tours"""
+    for other in solutions:
+        current_idx, current_phase, current_cost = other[0]
+
+        for idx, phase, cost in other[1:]:
+            pheromone[idx*13 + phase - 1,current_idx*13 + current_phase - 1] += 1.0 / cost
+            pheromone[current_idx*13 + current_phase - 1,idx*13 + phase - 1] += 1.0 / cost
+
+            current_idx, current_phase, current_cost = idx, phase, cost
 
 
 def main():
+    global solution_path
+    num_ants = 50
+    max_it = 20
+    c_heur = 2.5 # heuristic coefficient
+    c_hist = 1.0 # pheromone coefficient
+    decay_factor = 0.6 # reduction of pheromone
     processes = []
     products = Product.import_csv("datos.csv")
     best = {'vector': random_permutation(products)}
-    return best['vector'], cost(best['vector'])
+    best['cost'] = cost(best['vector'])
+    pheromone = initialise_pheromone_matrix(len(products), best['cost'])
+    for i in range(max_it):
+        solutions = []
+        for ant in range(num_ants):
+            candidate = {}
+            products = Product.import_csv("datos.csv")
+            candidate['vector'] = stepwise_const(products, pheromone, c_heur, c_hist)
+            candidate['cost'] = cost(candidate['vector'])
+            if candidate['cost'] < best['cost']:
+                best = candidate
+            solutions.append(solution_path)
+            solution_path = []
+        decay_pheromone(pheromone, decay_factor)
+        update_pheromone(pheromone, solutions)
+        print(" > iteration=%d, best=%g" % (i+1,best['cost']))
+    return best
 
 
 if __name__ == '__main__':
@@ -129,7 +233,6 @@ def random_permutation(products):
         product_idx, phase = int(product_idx), int(phase)
 
         for product in products:
-            print(product.passed_phases)
             if product.id_ == product_idx:
                 product.passed_phases.add(phase)
                 if phase != FINAL_PHASE:
