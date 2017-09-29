@@ -3,7 +3,6 @@ from enum import Enum
 import csv
 
 dependencies = {1:set(),2:set(),3:set(),4:{1,2,3},5:{4},6:{4},7:{5,6},8:set(),9:{8},10:{9},11:set(),12:set(),13:{11,12},14:{13,10,7}}
-FINAL_PHASE = 14
 
 
 class Product():
@@ -26,7 +25,7 @@ class Product():
                     Product(
                         id_=idx,
                         cost={key: int(value) for (key, value) in
-                              zip(range(1, FINAL_PHASE), row["Costo"].split(","))},
+                              zip(range(1, 14), row["Costo"].split(","))},
                         name=row['Producto'],
                         date=datetime.strptime(row['Fecha'], '%d/%m/%Y'),
                         passed_phases={int(x) for x in
