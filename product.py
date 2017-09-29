@@ -2,7 +2,7 @@ from datetime import datetime
 from enum import Enum
 import csv
 
-dependencies = {1:set(),2:set(),3:set(),4:{1,2,3},5:{4},6:{4},7:{5,6},8:[],9:[8],10:[9],11:[],12:[],13:[11,12],14:[13,10,7]}
+dependencies = {1:set(),2:set(),3:set(),4:{1,2,3},5:{4},6:{4},7:{5,6},8:set(),9:{8},10:{9},11:set(),12:set(),13:{11,12},14:{13,10,7}}
 
 
 class Product():
@@ -70,3 +70,19 @@ if __name__ == '__main__':
 
 def random_permutation(products):
     pass
+
+
+def get_initials(current_initials, passed_phases):
+    new_initials = set()
+    final_initials = set()
+    for process in current_initials:
+        if not dependencies[process] - passed_phases:
+            return process
+        for dependency in dependencies[process] - passed_phases:
+            new_initials = {dependency}
+            dep = get_initials(new_initials, passed_phases)
+            if type(dep) == set:
+                final_initials = final_initials.union(dep)
+            else:
+                final_initials.add(dep)
+        return final_initials
