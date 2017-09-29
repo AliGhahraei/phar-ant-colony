@@ -2,8 +2,8 @@ from datetime import datetime
 from enum import Enum
 import csv
 
-dependencies = {1:set(),2:set(),3:set(),4:{1,2,3},5:{4},6:{4},7:{5,6},8:set(),9:{8},10:{9},11:set(),12:set(),13:{11,12},14:{13,10,7}}
-FINAL_PHASE = 14
+dependencies = {1: set(), 2: set(), 3: set(), 4: {1, 2, 3}, 5: {4}, 6: {4}, 7: {5, 6}, 8: [], 9: [8], 10: [9], 11: [],
+                12: [], 13: [11, 12], 14: [13, 10, 7]}
 
 
 class Product():
@@ -14,8 +14,9 @@ class Product():
         self.passed_phases = passed_phases or set()
         self.id_ = id_
 
-    def days_left(self):
-        return self.date.hours - datetime.now().hours()
+    def hours_left(self):
+        hours = abs(self.date - datetime.now())
+        return hours.total_seconds() / 3600
 
     def import_csv(path):
         products = []
@@ -26,7 +27,7 @@ class Product():
                     Product(
                         id_=idx,
                         cost={key: int(value) for (key, value) in
-                              zip(range(1, FINAL_PHASE), row["Costo"].split(","))},
+                              zip(range(1, 14), row["Costo"].split(","))},
                         name=row['Producto'],
                         date=datetime.strptime(row['Fecha'], '%d/%m/%Y'),
                         passed_phases={int(x) for x in
@@ -38,7 +39,7 @@ def depCalc(root,prod):
     '''Calcula dependencia'''
     costAcum = 0
     if len(dependencies[root]) != 0:
-        costAcum += depCalc(max(dependencies[root]),prod)
+        costAcum += depCalc(max(dependencies[root]), prod)
         return costAcum
     else:
         return prod.cost[root]
@@ -50,15 +51,22 @@ def cost(result):
     Que le toma realizar esa solucion
     '''
     totalCost = 0
+    delayed = 0
     for component in result:
         for product in result[component]:
-           totalCost = totalCost + product.cost[component]+depCalc(component, product)
-           print(product.days_left())
-    return totalCost
+            if product.hours_left() - product.cost[component] + depCalc(component, product) < 0:
+                delayed += 1
+            totalCost = totalCost + product.cost[component] + depCalc(component, product)
+    # if(totalCost -
+    return delayed * totalCost
+
 
 def main():
-    products = Product.import_csv('datos.csv')
     processes = []
+    products = Product.import_csv("datos.csv")
+    print(cost({4: products}))
+    # products = None
+    # best = {'vector': random_permutation(products)}
 
     for product in products:
         for {process for process in range(1, 14)}
@@ -68,6 +76,7 @@ def main():
 
 if __name__ == '__main__':
     main()
+
 
 def random_permutation(products):
     pass
