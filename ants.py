@@ -104,14 +104,11 @@ def cost(result, products):
         for dependency in dependencies[FINAL_PHASE] - product.original_phases:
             phase_time = 0
 
-            for phase_product in result[dependency]:
-                phase_time += phase_product.cost[dependency]
-                if phase_product is product:
-                    if (phase_start_times[dependency] + phase_time
-                        >= max_dependency_duration):
-                        max_dependency_duration = (phase_start_times[dependency]
-                                                   + phase_time)
-                    break
+            phase_time += calculate_dependency_cost(product, dependency, result)
+            if (phase_start_times[dependency] + phase_time >= max_dependency_duration):
+                max_dependency_duration = phase_start_times[dependency] + phase_time
+
+
 
         expected_delivery = datetime.now() + timedelta(hours=max_dependency_duration)
         product_delay = expected_delivery - product.date
@@ -125,6 +122,27 @@ def cost(result, products):
 
 
     #return component_duration
+
+def calculate_dependency_cost(product, dependency, result):
+    max_dependency_duration = 0
+    phase_time = 0
+    if dependencies[dependency] - product.original_phases != set():
+        for phase_product in result[dependency]:
+            phase_time += phase_product.cost[dependency]
+            if phase_product is product:
+                phase_time += phase_product.cost[dependency]
+    else:
+        return 0
+
+    temporal_phase_time = 0
+    for dep in dependencies[dependency] - product.original_phases:
+        t2 = calculate_dependency_cost(product, dep, result)
+        if t2 > temporal_phase_time:
+            temporal_phase_time = t2
+        else:
+            return phase_time
+
+    return phase_time + temporal_phase_time
 
 def initialise_pheromone_matrix(num_products, naive_score):
     """initialises the pheromone matrix"""
@@ -282,7 +300,6 @@ def main():
     nuBest = {phase: [] for phase in range(1, FINAL_PHASE)}
     for i in best["vector"]:
         for j in best["vector"][i]:
-            print(type(i))
             nuBest[i].append(j.name)
 
 
