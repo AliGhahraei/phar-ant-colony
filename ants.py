@@ -1,6 +1,7 @@
 from datetime import datetime
 from enum import Enum
 from random import sample
+from datetime import timedelta
 
 import csv
 
@@ -17,7 +18,10 @@ class Product():
         self.id_ = id_
 
     def hours_left(self):
-        hours = abs(self.date - datetime.now())
+        if datetime.now() > self.date:
+            hours = abs(self.date - datetime.now())
+        else:
+            hours = timedelta(minutes=0)
         return hours.total_seconds() / 3600
 
     def import_csv(path):
@@ -53,7 +57,7 @@ def cost(result):
     Que le toma realizar esa solucion
     '''
     totalCost = 0
-    delayed = 0
+    delayed = 1
     for component in result:
         for product in result[component]:
             if product.hours_left() - product.cost[component] + depCalc(component, product) < 0:
