@@ -10,15 +10,16 @@ FINAL_PHASE = 14
 
 
 class Product():
-    def __init__(self, cost, name, date, id_, passed_phases=None):
+    def __init__(self, cost, name, date, id_, passed_phases=None, original_phases=None):
         self.cost = cost
         self.name = name
         self.date = date
         self.passed_phases = passed_phases or set()
+        self.original_phases = original_phases or set()
         self.id_ = id_
 
     def hours_left(self):
-        if datetime.now() > self.date:
+        if self.date > datetime.now():
             hours = abs(self.date - datetime.now())
         else:
             hours = timedelta(minutes=0)
@@ -29,23 +30,41 @@ class Product():
         with open(path, newline='') as csvfile:
             reader = csv.DictReader(csvfile, delimiter=',')
             for idx, row in enumerate(reader):
-                products.append(
-                    Product(
-                        id_=idx,
-                        cost={key: int(value) for (key, value) in
-                              zip(range(1, FINAL_PHASE), row["Costo"].split(","))},
-                        name=row['Producto'],
-                        date=datetime.strptime(row['Fecha'], '%d/%m/%Y'),
-                        passed_phases={int(x) for x in
-                                       row["Fases Pasadas"].split(",")}))
+                try:
+                    products.append(
+                        Product(
+                            id_=idx,
+                            cost={key: int(value) for (key, value) in
+                                  zip(range(1, FINAL_PHASE), row["Costo"].split(","))},
+                            name=row['Producto'],
+                            date=datetime.strptime(row['Fecha'], '%d/%m/%Y %H:%M'),
+                            passed_phases={int(x) for x in
+                                           row["Fases Pasadas"].split(",")},
+                            original_phases={int(x) for x in
+                                           row["Fases Pasadas"].split(",")}))
+                except: 
+                    products.append(
+                        Product(
+                            id_=idx,
+                            cost={key: int(value) for (key, value) in
+                                  zip(range(1, FINAL_PHASE), row["Costo"].split(","))},
+                            name=row['Producto'],
+                            date=datetime.strptime(row['Fecha'], '%d/%m/%Y %H:%M'),
+                            passed_phases=set(),
+                            original_phases=set()))
+
+                products[-1].cost[14] = 0
         return products
 
 
 def depCalc(root,prod):
     '''Calcula dependencia'''
     costAcum = 0
+    if root in prod.original_phases:
+        return 0
     if len(dependencies[root]) != 0:
-        costAcum += depCalc(max(dependencies[root]), prod)
+        #dependency_cost = [prod.cost[dependency] for dependency in dependencies[root]]
+        costAcum += prod.cost[root] + depCalc(max(dependency_cost), prod)
         return costAcum
     else:
         return prod.cost[root]
@@ -60,17 +79,27 @@ def cost(result):
     delayed = 1
     for component in result:
         for product in result[component]:
-            if product.hours_left() - product.cost[component] + depCalc(component, product) < 0:
+            print(f'id: {product.id_}')
+            print(f'component: {component}')
+            print(f'{product.original_phases}')
+            if product.hours_left() - (product.cost[component] + depCalc(component, product)) < 0:
                 delayed += 1
             totalCost = totalCost + product.cost[component] + depCalc(component, product)
+            print((product.cost[component] + depCalc(component, product)))
+            print(product.hours_left() - (product.cost[component] + depCalc(component, product)))
+
+            finalCost = depCalc(14, product)
+            print(f'final_cost: {finalCost}')
+
+
     # if(totalCost -
+    print(f'Retrasos {delayed}')
     return delayed * totalCost
 
 
 def main():
     processes = []
     products = Product.import_csv("datos.csv")
-    print(cost({4: products}))
     best = {'vector': random_permutation(products)}
     return best['vector'], cost(best['vector'])
 
@@ -100,6 +129,7 @@ def random_permutation(products):
         product_idx, phase = int(product_idx), int(phase)
 
         for product in products:
+            print(product.passed_phases)
             if product.id_ == product_idx:
                 product.passed_phases.add(phase)
                 if phase != FINAL_PHASE:
