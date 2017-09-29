@@ -128,6 +128,8 @@ def cost(result, products):
 
 def initialise_pheromone_matrix(num_products, naive_score):
     """initialises the pheromone matrix"""
+    if naive_score == 0:
+        naive_score = .000000000000000001
     v = (num_products*(FINAL_PHASE-1)) / naive_score
     return v * np.ones((num_products*(FINAL_PHASE-1))*(num_products*(FINAL_PHASE-1))).reshape((num_products*(FINAL_PHASE-1),(num_products*(FINAL_PHASE-1))))
 
@@ -252,7 +254,7 @@ def random_permutation(products):
 
 def main():
     global solution_path
-    num_ants = 50
+    num_ants = 3
     max_it = 20
     c_heur = 2.5 # heuristic coefficient
     c_hist = 1.0 # pheromone coefficient
@@ -276,6 +278,15 @@ def main():
         decay_pheromone(pheromone, decay_factor)
         update_pheromone(pheromone, solutions)
         print(" > iteration=%d, best=%g" % (i+1,best['cost']))
+
+    nuBest = {phase: [] for phase in range(1, FINAL_PHASE)}
+    for i in best["vector"]:
+        for j in best["vector"][i]:
+            print(type(i))
+            nuBest[i].append(j.name)
+
+
+    print(nuBest)
     return best
 
 
