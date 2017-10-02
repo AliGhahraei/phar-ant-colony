@@ -272,8 +272,8 @@ def random_permutation(products):
 
 def main():
     global solution_path
-    num_ants = 3
-    max_it = 20
+    num_ants = 50
+    max_it = 25
     c_heur = 2.5 # heuristic coefficient
     c_hist = 1.0 # pheromone coefficient
     decay_factor = 0.6 # reduction of pheromone
